@@ -1,0 +1,3 @@
+export default function ProfileLoading() {
+  return <main className="min-h-screen bg-[#08080b] pb-24 pt-28"><div className="container-wide max-w-[900px] animate-pulse"><div className="mb-10 h-32 w-3/4 rounded-lg bg-white/[.05]" /><div className="glass rounded-2xl p-6 sm:p-8"><div className="h-16 w-16 rounded-full bg-white/[.06]" /><div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div className="h-28 rounded-xl bg-white/[.04]" /><div className="h-28 rounded-xl bg-white/[.04]" /><div className="h-28 rounded-xl bg-white/[.04]" /><div className="h-28 rounded-xl bg-white/[.04]" /></div></div></div></main>;
+}

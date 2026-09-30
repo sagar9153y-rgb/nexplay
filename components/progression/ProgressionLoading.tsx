@@ -1,0 +1,3 @@
+export default function ProgressionLoading() {
+  return <main className="min-h-screen bg-[#08080b] pb-24 pt-28" aria-busy="true" aria-label="Loading player progression"><div className="container-wide mx-auto max-w-[1050px]"><div className="mb-8 h-24 animate-pulse rounded-xl bg-white/[.04]" /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><div className="h-40 animate-pulse rounded-xl bg-white/[.04]" /><div className="h-40 animate-pulse rounded-xl bg-white/[.04]" /><div className="h-40 animate-pulse rounded-xl bg-white/[.04]" /></div><p className="sr-only">Loading progression data...</p></div></main>;
+}

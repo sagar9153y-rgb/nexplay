@@ -1,0 +1,5 @@
+"use client";
+import { Activity, Flame, Gamepad2, Trophy } from "lucide-react";
+import { motion } from "framer-motion";
+const stats = [["12,408", "Active Players", Activity], ["2.4M", "Games Played", Gamepad2], ["84.7M", "XP Earned", Flame], ["24", "Daily Challenges", Trophy]] as const;
+export default function Stats() { return <section id="stats" className="border-y border-white/[.06] bg-white/[.015] py-7"><div className="container-wide grid grid-cols-2 divide-x divide-y divide-white/[.08] md:grid-cols-4 md:divide-y-0">{stats.map(([value, label, Icon], index) => <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * .08 }} key={label} className="flex items-center gap-3 px-4 py-4 first:pl-0 md:justify-center md:px-6 md:py-2"><Icon size={18} className="text-[#ff4058]" /><div><div className="text-xl font-black tracking-tight text-white">{value}</div><div className="mt-0.5 text-[10px] uppercase tracking-[.12em] text-[#777482]">{label}</div></div></motion.div>)}</div></section>; }
