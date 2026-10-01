@@ -578,3 +578,180 @@ end;
 $$;
 revoke all on function public.get_player_progression() from public, anon;
 grant execute on function public.get_player_progression() to authenticated;
+
+create table if not exists public.user_daily_missions (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  mission_date date not null,
+  mission_code text not null,
+  title text not null,
+  description text not null,
+  game_type text check (
+    game_type is null or game_type in ('tic-tac-toe', 'memory-match', 'reaction-rush', 'quick-quiz')
+  ),
+  target_value integer not null check (target_value > 0),
+  progress_value integer not null default 0 check (progress_value >= 0),
+  xp_reward integer not null check (xp_reward between 1 and 500),
+  completed boolean not null default false,
+  completed_at timestamptz,
+  primary key (user_id, mission_date, mission_code)
+);
+
+create table if not exists public.daily_mission_rewards (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  mission_date date not null,
+  mission_code text not null,
+  xp_awarded integer not null check (xp_awarded between 1 and 500),
+  awarded_at timestamptz not null default now(),
+  primary key (user_id, mission_date, mission_code)
+);
+
+alter table public.user_daily_missions enable row level security;
+alter table public.daily_mission_rewards enable row level security;
+revoke all on public.user_daily_missions from public, anon, authenticated;
+revoke all on public.daily_mission_rewards from public, anon, authenticated;
+
+create or replace function public.get_daily_missions()
+returns table (
+  id text,
+  mission_date date,
+  mission_code text,
+  title text,
+  description text,
+  game_type text,
+  target_value integer,
+  progress_value integer,
+  xp_reward integer,
+  completed boolean,
+  completed_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  today_utc date := (now() at time zone 'UTC')::date;
+begin
+  if current_user_id is null then raise exception 'Not authenticated'; end if;
+
+  insert into public.user_daily_missions (
+    user_id, mission_date, mission_code, title, description, game_type,
+    target_value, xp_reward
+  ) values
+    (current_user_id, today_utc, 'PLAY_THREE', 'Play 3 Games', 'Complete any three games today.', null, 3, 50),
+    (current_user_id, today_utc, 'WIN_ONE', 'Win a Game', 'Win any game today.', null, 1, 75),
+    (current_user_id, today_utc, 'PLAY_QUIZ', 'Quiz Time', 'Complete a Quick Quiz today.', 'quick-quiz', 1, 50)
+  on conflict (user_id, mission_date, mission_code) do nothing;
+
+  return query
+    select m.mission_code, m.mission_date, m.mission_code, m.title,
+           m.description, m.game_type, m.target_value, m.progress_value,
+           m.xp_reward, m.completed, m.completed_at
+    from public.user_daily_missions m
+    where m.user_id = current_user_id and m.mission_date = today_utc
+    order by m.mission_code;
+end;
+$$;
+
+create or replace function public.sync_daily_missions()
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  today_utc date := (now() at time zone 'UTC')::date;
+  games_played integer;
+  games_won integer;
+  quizzes_played integer;
+  mission_xp integer := 0;
+begin
+  if current_user_id is null then raise exception 'Not authenticated'; end if;
+
+  insert into public.user_daily_missions (
+    user_id, mission_date, mission_code, title, description, game_type,
+    target_value, xp_reward
+  ) values
+    (current_user_id, today_utc, 'PLAY_THREE', 'Play 3 Games', 'Complete any three games today.', null, 3, 50),
+    (current_user_id, today_utc, 'WIN_ONE', 'Win a Game', 'Win any game today.', null, 1, 75),
+    (current_user_id, today_utc, 'PLAY_QUIZ', 'Quiz Time', 'Complete a Quick Quiz today.', 'quick-quiz', 1, 50)
+  on conflict (user_id, mission_date, mission_code) do nothing;
+
+  select count(*)::integer,
+         count(*) filter (where h.result = 'win')::integer,
+         count(*) filter (where h.game_type = 'quick-quiz')::integer
+    into games_played, games_won, quizzes_played
+    from public.game_history h
+    where h.user_id = current_user_id
+      and (h.played_at at time zone 'UTC')::date = today_utc;
+
+  update public.user_daily_missions m
+  set progress_value = least(m.target_value, case m.mission_code
+        when 'PLAY_THREE' then games_played
+        when 'WIN_ONE' then games_won
+        when 'PLAY_QUIZ' then quizzes_played
+        else m.progress_value
+      end),
+      completed = case m.mission_code
+        when 'PLAY_THREE' then games_played >= m.target_value
+        when 'WIN_ONE' then games_won >= m.target_value
+        when 'PLAY_QUIZ' then quizzes_played >= m.target_value
+        else m.completed
+      end,
+      completed_at = case
+        when (case m.mission_code
+          when 'PLAY_THREE' then games_played >= m.target_value
+          when 'WIN_ONE' then games_won >= m.target_value
+          when 'PLAY_QUIZ' then quizzes_played >= m.target_value
+          else m.completed
+        end) then coalesce(m.completed_at, now())
+        else m.completed_at
+      end
+  where m.user_id = current_user_id and m.mission_date = today_utc;
+
+  with newly_awarded as (
+    insert into public.daily_mission_rewards (user_id, mission_date, mission_code, xp_awarded)
+    select m.user_id, m.mission_date, m.mission_code, m.xp_reward
+    from public.user_daily_missions m
+    where m.user_id = current_user_id
+      and m.mission_date = today_utc
+      and m.completed
+    on conflict (user_id, mission_date, mission_code) do nothing
+    returning xp_awarded
+  ), earned as (
+    select coalesce(sum(xp_awarded), 0)::integer as xp
+    from newly_awarded
+  )
+  update public.profiles p
+  set xp = p.xp + earned.xp,
+      level = floor(sqrt((p.xp + earned.xp)::numeric / 100))::integer + 1,
+      updated_at = now()
+  from earned
+  where p.id = current_user_id and earned.xp > 0
+  returning earned.xp into mission_xp;
+
+  if mission_xp > 0 then
+    perform pg_advisory_xact_lock(hashtextextended(current_user_id::text || ':achievements', 0));
+    insert into public.user_achievements (user_id, achievement_id)
+    select current_user_id, eligible.achievement_id
+    from (
+      select a.id as achievement_id
+      from public.achievements a
+      join public.profiles p on p.id = current_user_id
+      where (a.id = 'XP_1000' and p.xp >= 1000)
+         or (a.id = 'LEVEL_5' and p.level >= 5)
+         or (a.id = 'LEVEL_10' and p.level >= 10)
+    ) eligible
+    where not exists (
+      select 1 from public.user_achievements ua
+      where ua.user_id = current_user_id and ua.achievement_id = eligible.achievement_id
+    );
+  end if;
+end;
+$$;
+
+revoke all on function public.get_daily_missions() from public, anon;
+grant execute on function public.get_daily_missions() to authenticated;
+revoke all on function public.sync_daily_missions() from public, anon;
+grant execute on function public.sync_daily_missions() to authenticated;

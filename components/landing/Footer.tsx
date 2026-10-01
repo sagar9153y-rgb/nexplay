@@ -1,3 +1,3 @@
 import { Zap } from "lucide-react";
-const links = ["Games", "Leaderboard", "Challenges", "Community", "Privacy", "Terms"];
+const links = ["Games", "Leaderboard", "Challenges", "Community"];
 export default function Footer() { return <footer className="container-wide flex flex-col gap-7 py-10 md:flex-row md:items-center md:justify-between"><a href="#top" className="flex items-center gap-2 text-sm font-black tracking-[.12em]"><span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#ff4058] text-white"><Zap size={14} fill="currentColor" /></span>NEXPLAY</a><nav className="flex flex-wrap gap-x-6 gap-y-3">{links.map((link) => <a key={link} href={`#${link.toLowerCase()}`} className="text-[11px] text-[#777482] transition hover:text-white">{link}</a>)}</nav><p className="text-[10px] text-[#55525e]">© 2026 NEXPLAY. Play smart.</p></footer>; }

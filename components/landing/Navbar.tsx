@@ -11,18 +11,41 @@ const memberLinks = [{ label: "Dashboard", href: "/dashboard" }, { label: "Achie
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     const supabase = createClient();
-    void supabase.auth.getUser().then(({ data }) => setIsAuthenticated(Boolean(data.user)));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setIsAuthenticated(Boolean(session?.user)));
+    void supabase.auth.getUser()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Authentication status lookup failed:", error);
+          setAuthError("Unable to verify your sign-in status. Please refresh and try again.");
+          return;
+        }
+        setIsAuthenticated(Boolean(data.user));
+      })
+      .catch((error: unknown) => {
+        console.error("Authentication status lookup failed:", error);
+        setAuthError("Unable to verify your sign-in status. Please refresh and try again.");
+      });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(Boolean(session?.user));
+      setAuthError("");
+    });
     return () => listener.subscription.unsubscribe();
   }, []);
 
   async function logout() {
-    await createClient().auth.signOut();
-    setIsAuthenticated(false);
-    setOpen(false);
+    setAuthError("");
+    try {
+      const { error } = await createClient().auth.signOut();
+      if (error) throw error;
+      setIsAuthenticated(false);
+      setOpen(false);
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      setAuthError("Unable to log out right now. Please try again.");
+    }
   }
 
   const links = isAuthenticated ? [...publicLinks, ...memberLinks] : publicLinks;
@@ -34,5 +57,6 @@ export default function Navbar() {
       <button type="button" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen((value) => !value)} className="flex min-h-11 min-w-11 items-center justify-center text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ff4058] md:hidden">{open ? <X /> : <Menu />}</button>
     </div>
     {open && <nav aria-label="Mobile navigation" className="border-t border-white/[.06] bg-[#0c0b10]/95 px-5 py-4 backdrop-blur-xl md:hidden"><div className="container-wide grid gap-1">{links.map((link) => <Link key={link.href} href={link.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 text-sm font-semibold text-[#c9c5ce] hover:bg-white/[.05] hover:text-white">{link.label}</Link>)}{isAuthenticated ? <button type="button" onClick={() => void logout()} className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-[#c9c5ce] hover:bg-white/[.05] hover:text-white">Logout</button> : <div className="mt-2 flex gap-3 border-t border-white/[.06] pt-4"><Link href="/login" onClick={() => setOpen(false)} className="ghost-button flex-1 justify-center">Login</Link><Link href="/signup" onClick={() => setOpen(false)} className="accent-button flex-1 justify-center">Create Account</Link></div>}</div></nav>}
+    {authError && <p role="alert" className="container-wide py-2 text-xs text-[#ff9ba8]">{authError}</p>}
   </header>;
 }

@@ -1,7 +1,5 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
-
 export type ProgressionResult = { xp_awarded: number; total_xp: number; level: number; games_played: number; level_up: boolean; already_awarded: boolean };
 
 export type GameCompletionMetadata = {
@@ -46,18 +44,12 @@ export async function completeGameSession(sessionId: string, game: GameCompletio
   return payload as CompletedGameResult;
 }
 
-export async function syncDailyMissions(
-  gameType: string,
-  result: "win" | "loss" | "draw" | "complete"
-) {
+export async function syncDailyMissions() {
   const { createClient } = await import("@/lib/supabase/client");
 
   const supabase = createClient();
 
-  const { data, error } = await supabase.rpc("sync_daily_missions", {
-    p_game_type: gameType,
-    p_result: result,
-  });
+  const { data, error } = await supabase.rpc("sync_daily_missions");
 
   if (error) {
     console.error("Daily mission sync failed:", error);

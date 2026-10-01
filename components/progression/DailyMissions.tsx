@@ -36,9 +36,7 @@ export default function DailyMissions() {
     try {
       const supabase = createClient();
 
-      const { data, error: rpcError } = await supabase.rpc(
-        "get_daily_missions"
-      );
+      const { data, error: rpcError } = await supabase.rpc("get_daily_missions");
 
       if (rpcError) {
         console.error("Daily missions load failed:", rpcError);

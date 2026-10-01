@@ -19,7 +19,7 @@ from this repository in order:
 1. `sql/schema.sql` — profiles, signup trigger, profile row security.
 2. `sql/progression.sql` — idempotent per-user game rewards.
 3. `sql/progression-platform.sql` — game history, completion RPC, profile
-   progression, achievements, streaks, and leaderboard.
+   progression, achievements, streaks, daily missions, and leaderboard.
 
 The completion RPC depends on both preceding scripts. Re-run all three in
 order if setting up a new project; the schema and reward policies are safe to

@@ -147,7 +147,7 @@ export default async function DashboardPage() {
         )}
 
         {/* XP + CORE METRICS */}
-        <div className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]"><DailyMissions />
+        <div className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]">
           <XPProgressCard
             xp={snapshot.profile.xp}
             level={snapshot.profile.level}

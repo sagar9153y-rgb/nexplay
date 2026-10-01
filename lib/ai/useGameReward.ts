@@ -66,10 +66,7 @@ export function useGameReward(
 
         // Now update today's Daily Missions.
         try {
-          await syncDailyMissions(
-            metadata.game_type,
-            metadata.result
-          );
+          await syncDailyMissions();
         } catch (missionError) {
           // Mission sync must never break the already successful
           // game reward flow.

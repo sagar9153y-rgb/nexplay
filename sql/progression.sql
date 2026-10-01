@@ -55,4 +55,3 @@ end;
 $$;
 
 revoke all on function public.award_game_reward(uuid, integer) from public, anon, authenticated;
-grant execute on function public.award_game_reward(uuid, integer) to authenticated;
