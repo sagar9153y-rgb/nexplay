@@ -139,12 +139,10 @@ export default async function DashboardPage() {
             role="status"
             className="mb-6 rounded-xl border border-[#ffb54c]/25 bg-[#ffb54c]/[.06] px-4 py-3 text-xs leading-5 text-[#ffcf7b]"
           >
-            Your existing XP is available. Run{" "}
-            <span className="font-bold">
-              sql/progression-platform.sql
-            </span>{" "}
-            in Supabase to enable history, achievements,
-            streaks, and leaderboard statistics.
+            Run <span className="font-bold">sql/schema.sql</span>,{" "}
+            <span className="font-bold">sql/progression.sql</span>, and{" "}
+            <span className="font-bold">sql/progression-platform.sql</span>{" "}
+            in that order in Supabase to enable profile and progression data.
           </div>
         )}
 

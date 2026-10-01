@@ -9,7 +9,6 @@ import { chooseQuizAnswer, getQuizResponseDelay } from "@/lib/ai/difficulty";
 import { getQuizQuestions, type QuizQuestion } from "@/lib/ai/quiz-generator";
 import { useGameReward } from "@/lib/ai/useGameReward";
 import type { AIDifficulty } from "@/lib/ai/types";
-import { calculateGameReward } from "@/lib/progression";
 
 type GameMode = "solo" | "battle";
 type QuizPhase = "ready" | "loading" | "playing" | "complete";
@@ -53,7 +52,6 @@ export default function QuickQuiz() {
   const currentPlayerAnswer = playerAnswers.get(questionIndex);
   const currentAiAnswer = aiAnswers.get(questionIndex);
   const aiThinking = mode === "battle" && phase === "playing" && !currentAiAnswer;
-  const localXp = calculateGameReward({ game: "quick-quiz", correctAnswers });
   const resultTitle = mode === "solo" ? "Quiz complete"
     : playerScore > aiScore ? "You win!"
       : aiScore > playerScore ? "AI wins"
@@ -68,7 +66,7 @@ export default function QuickQuiz() {
     accuracy,
     reaction_times: null,
   };
-  const { result: reward, loading: rewardLoading, error: rewardError } = useGameReward(sessionId, phase === "complete", localXp, completionMetadata);
+  const { result: reward, loading: rewardLoading, error: rewardError, retry: retryReward } = useGameReward(sessionId, phase === "complete", completionMetadata);
 
   function clearTimers() {
     if (timerRef.current !== null) window.clearInterval(timerRef.current);
@@ -245,8 +243,7 @@ export default function QuickQuiz() {
           <div className="rounded-lg bg-white/[.04] p-3"><div className="text-lg font-black text-white">{playerAverageResponse} ms</div><div className="text-[10px] uppercase text-[#85818e]">Player avg response</div></div>
           <div className="rounded-lg bg-white/[.04] p-3"><div className="text-lg font-black text-white">{mode === "battle" ? `${(aiAverageResponse / 1000).toFixed(1)}s` : "—"}</div><div className="text-[10px] uppercase text-[#85818e]">AI avg response</div></div>
         </div>
-        <p className="mt-6 flex items-center gap-2 text-lg font-black text-[#ffb54c]"><Sparkles size={18} />{reward ? `+${reward.xp_awarded} XP earned` : "XP syncing..."}</p><RewardStatus result={reward} loading={rewardLoading} error={rewardError} />
-        <RewardStatus result={reward} loading={rewardLoading} error={rewardError} />
+        <p className="mt-6 flex items-center gap-2 text-lg font-black text-[#ffb54c]"><Sparkles size={18} />{reward ? reward.already_awarded ? "XP already recorded" : `+${reward.xp_awarded} XP earned` : rewardError ? "XP not synced" : "XP syncing..."}</p><RewardStatus result={reward} loading={rewardLoading} error={rewardError} onRetry={retryReward} />
         <button type="button" onClick={() => void startQuiz()} className="accent-button mt-7"><RotateCcw size={15} /> Play Again</button><button type="button" onClick={returnToSetup} className="ghost-button mt-3">Change Mode</button>
       </motion.div>}
     </div>
@@ -258,7 +255,7 @@ export default function QuickQuiz() {
         <div className="rounded-lg bg-white/[.04] p-3"><Check size={14} className="mb-2 text-[#60dba2]" /><div className="text-lg font-black text-white">{correctAnswers}</div><div className="text-[10px] uppercase tracking-wider text-[#85818e]">Player correct</div></div>
         <div className="rounded-lg bg-white/[.04] p-3"><X size={14} className="mb-2 text-[#ff5368]" /><div className="text-lg font-black text-white">{incorrectAnswers}</div><div className="text-[10px] uppercase tracking-wider text-[#85818e]">Player missed</div></div>
         <div className="rounded-lg bg-white/[.04] p-3"><Clock3 size={14} className="mb-2 text-[#ff5368]" /><div className="text-lg font-black text-white">{accuracy}%</div><div className="text-[10px] uppercase tracking-wider text-[#85818e]">Accuracy</div></div>
-        <div className="rounded-lg bg-white/[.04] p-3"><Sparkles size={14} className="mb-2 text-[#ffb54c]" /><div className="text-lg font-black text-white">{phase === "complete" ? reward?.xp_awarded ?? localXp : "—"}</div><div className="text-[10px] uppercase tracking-wider text-[#85818e]">XP</div></div>
+        <div className="rounded-lg bg-white/[.04] p-3"><Sparkles size={14} className="mb-2 text-[#ffb54c]" /><div className="text-lg font-black text-white">{phase === "complete" ? reward?.xp_awarded ?? "—" : "—"}</div><div className="text-[10px] uppercase tracking-wider text-[#85818e]">XP</div></div>
       </div>
       {phase === "playing" && <div className="glass rounded-2xl p-4"><div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-[#85818e]"><span>Progress</span><span>{questionIndex + 1} / {questions.length}</span></div><div className="h-2 overflow-hidden rounded-full bg-white/[.07]"><div className="h-full rounded-full bg-[#ff4058] transition-all" style={{ width: `${currentProgress}%` }} /></div></div>}
       <div className="glass rounded-2xl p-5"><div className="mb-3 flex items-center gap-2 text-xs font-bold text-white"><Clock3 size={15} className="text-[#ff5368]" /> Quiz rules</div><p className="text-xs leading-6 text-[#85818e]">Answer each question within 15 seconds. In battle mode, the AI uses the same questions and waits before answering.</p></div>

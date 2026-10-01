@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   completeGameSession,
   syncDailyMissions,
@@ -9,6 +9,15 @@ import {
 } from "@/lib/progression-client";
 
 const rewardRequests = new Map<string, Promise<CompletedGameResult>>();
+
+function isCompletionFunctionMissing(error: unknown) {
+  const code = typeof error === "object" && error !== null && "code" in error
+    ? String(error.code)
+    : "";
+  const message = error instanceof Error ? error.message : "";
+  return code === "PGRST202" || code === "42883"
+    || /complete_game_session.*not found|could not find the function/i.test(message);
+}
 
 type RewardState = {
   sessionId: string;
@@ -19,11 +28,16 @@ type RewardState = {
 export function useGameReward(
   sessionId: string,
   completed: boolean,
-  fallbackXp: number,
   metadata: GameCompletionMetadata
 ) {
   const metadataJson = JSON.stringify(metadata);
   const [state, setState] = useState<RewardState | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const retry = useCallback(() => {
+    setState((current) => current?.sessionId === sessionId ? null : current);
+    setRetryCount((count) => count + 1);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!sessionId || !completed) return;
@@ -35,9 +49,14 @@ export function useGameReward(
     if (!request) {
       const game = JSON.parse(metadataJson) as GameCompletionMetadata;
 
-      request = completeGameSession(sessionId, fallbackXp, game);
+      request = completeGameSession(sessionId, game);
 
       rewardRequests.set(sessionId, request);
+      void request.catch(() => {
+        if (rewardRequests.get(sessionId) === request) {
+          rewardRequests.delete(sessionId);
+        }
+      });
     }
 
     void request
@@ -69,11 +88,16 @@ export function useGameReward(
       })
       .catch((error) => {
         console.error("Game reward sync failed:", error);
+        const message = error instanceof Error ? error.message : "";
 
         if (active) {
           setState({
             sessionId,
-            error: "XP could not be synced. Your game result is safe.",
+            error: isCompletionFunctionMissing(error)
+              ? "Game rewards are not installed yet. Run sql/schema.sql, sql/progression.sql, and sql/progression-platform.sql in Supabase, then retry this game."
+              : /not authenticated/i.test(message)
+              ? "Sign in to save XP for this game."
+              : "XP could not be confirmed by the server. Retry to safely sync this same game.",
           });
         }
       });
@@ -83,10 +107,10 @@ export function useGameReward(
     };
  }, [
   completed,
-  fallbackXp,
   metadataJson,
   metadata.game_type,
   metadata.result,
+  retryCount,
   sessionId,
 ]);
   const currentState =
@@ -95,6 +119,7 @@ export function useGameReward(
   return {
     result: currentState?.result ?? null,
     error: currentState?.error ?? null,
+    retry,
     loading:
       completed &&
       Boolean(sessionId) &&

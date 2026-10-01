@@ -9,7 +9,6 @@ import { chooseMemoryAIMove, getMemoryAIDelay } from "@/lib/ai/memory-match";
 import { useGameReward } from "@/lib/ai/useGameReward";
 import type { GameCompletionMetadata } from "@/lib/progression-client";
 import type { AIDifficulty } from "@/lib/ai/types";
-import { calculateGameReward } from "@/lib/progression";
 
 type CardValue = "flame" | "zap" | "star" | "crown" | "gem" | "target" | "bolt" | "orbit";
 type MemoryCard = { id: number; value: CardValue; revealed: boolean; matched: boolean };
@@ -59,7 +58,6 @@ export default function MemoryMatch() {
   const hideTimerRef = useRef<number | null>(null);
   const intervalRef = useRef<number | null>(null);
   const matchedPairs = cards.filter((card) => card.matched).length / 2;
-  const localXp = calculateGameReward({ game: "memory-match", outcome: "complete", moves: playerMoves });
   const result: GameCompletionMetadata["result"] = mode === "solo" ? "complete" : playerPairs > aiPairs ? "win" : aiPairs > playerPairs ? "loss" : "draw";
   const completionMetadata = {
     game_type: "memory-match" as const,
@@ -71,7 +69,7 @@ export default function MemoryMatch() {
     accuracy: null,
     reaction_times: null,
   };
-  const { result: reward, loading: rewardLoading, error: rewardError } = useGameReward(sessionId, status === "complete", localXp, completionMetadata);
+  const { result: reward, loading: rewardLoading, error: rewardError, retry: retryReward } = useGameReward(sessionId, status === "complete", completionMetadata);
 
   function syncCards(nextCards: MemoryCard[]) {
     cardsRef.current = nextCards;
@@ -317,10 +315,10 @@ export default function MemoryMatch() {
         <div className="rounded-lg bg-white/[.04] p-3"><Trophy size={14} className="mb-2 text-[#ff5368]" /><div className="text-lg font-black text-white">{playerPairs}</div><div className="text-[10px] uppercase tracking-wider text-[#85818e]">Player score</div></div>
         <div className="rounded-lg bg-[#ae69df]/10 p-3"><Bot size={14} className="mb-2 text-[#c58cf0]" /><div className="text-lg font-black text-white">{mode === "challenge" ? aiPairs : "—"}</div><div className="text-[10px] uppercase tracking-wider text-[#85818e]">AI score</div></div>
       </div>
-      <RewardStatus result={reward} loading={rewardLoading} error={rewardError} />
+      <RewardStatus result={reward} loading={rewardLoading} error={rewardError} onRetry={retryReward} />
       <div className="glass rounded-2xl p-5"><div className="mb-3 flex items-center gap-2 text-xs font-bold text-white"><Brain size={15} className="text-[#c58cf0]" /> How to play</div><ol className="space-y-2 text-xs leading-5 text-[#85818e]"><li>01 &nbsp;Flip two cards.</li><li>02 &nbsp;Find matching pairs.</li><li>03 &nbsp;In AI Challenge, take turns after misses.</li><li>04 &nbsp;The AI only remembers cards it has seen.</li></ol></div>
     </aside>
 
-    {status === "complete" && <div role="dialog" aria-modal="true" aria-label="Memory game result" className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"><motion.div initial={{ opacity: 0, scale: .9 }} animate={{ opacity: 1, scale: 1 }} className="glass w-full max-w-[370px] rounded-2xl p-7 text-center"><Trophy className="mx-auto mb-4 text-[#60dba2]" size={28} /><p className="eyebrow mb-3">All pairs matched</p><h2 className="text-3xl font-black text-white">{resultTitle}</h2><div className="mt-6 grid grid-cols-2 gap-3 text-center"><div className="rounded-lg bg-[#ff4058]/10 p-3"><p className="text-xl font-black text-[#ff9ba8]">{playerPairs}</p><p className="text-[10px] uppercase text-[#85818e]">Player pairs</p></div><div className="rounded-lg bg-[#ae69df]/10 p-3"><p className="text-xl font-black text-[#d6b3f3]">{mode === "challenge" ? aiPairs : "—"}</p><p className="text-[10px] uppercase text-[#85818e]">AI pairs</p></div></div><RewardStatus result={reward} loading={rewardLoading} error={rewardError} /><button type="button" onClick={() => restartGame()} className="accent-button mt-7 w-full">Play Again</button><button type="button" onClick={() => restartGame(mode === "solo" ? "challenge" : "solo")} className="ghost-button mt-3 w-full">Change Mode</button><a href="/games" className="mt-4 inline-flex items-center gap-1 text-xs text-[#85818e] hover:text-white"><ArrowLeft size={13} /> Back to Games</a></motion.div></div>}
+    {status === "complete" && <div role="dialog" aria-modal="true" aria-label="Memory game result" className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"><motion.div initial={{ opacity: 0, scale: .9 }} animate={{ opacity: 1, scale: 1 }} className="glass w-full max-w-[370px] rounded-2xl p-7 text-center"><Trophy className="mx-auto mb-4 text-[#60dba2]" size={28} /><p className="eyebrow mb-3">All pairs matched</p><h2 className="text-3xl font-black text-white">{resultTitle}</h2><div className="mt-6 grid grid-cols-2 gap-3 text-center"><div className="rounded-lg bg-[#ff4058]/10 p-3"><p className="text-xl font-black text-[#ff9ba8]">{playerPairs}</p><p className="text-[10px] uppercase text-[#85818e]">Player pairs</p></div><div className="rounded-lg bg-[#ae69df]/10 p-3"><p className="text-xl font-black text-[#d6b3f3]">{mode === "challenge" ? aiPairs : "—"}</p><p className="text-[10px] uppercase text-[#85818e]">AI pairs</p></div></div><RewardStatus result={reward} loading={rewardLoading} error={rewardError} onRetry={retryReward} /><button type="button" onClick={() => restartGame()} className="accent-button mt-7 w-full">Play Again</button><button type="button" onClick={() => restartGame(mode === "solo" ? "challenge" : "solo")} className="ghost-button mt-3 w-full">Change Mode</button><a href="/games" className="mt-4 inline-flex items-center gap-1 text-xs text-[#85818e] hover:text-white"><ArrowLeft size={13} /> Back to Games</a></motion.div></div>}
   </section>;
 }

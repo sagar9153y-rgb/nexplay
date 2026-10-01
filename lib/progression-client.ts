@@ -23,19 +23,8 @@ export type CompletedGameResult = ProgressionResult & {
   new_achievements?: AchievementUnlock[];
 };
 
-export async function awardGameReward(sessionId: string, xp: number): Promise<ProgressionResult> {
-  if (!sessionId || !Number.isInteger(xp) || xp < 1 || xp > 500) throw new Error("Invalid game reward.");
-  const { data, error } = await createClient().rpc("award_game_reward", { p_session_id: sessionId, p_xp: xp });
-  if (error) throw error;
-  return data as ProgressionResult;
-}
-
-function isCompletionFunctionMissing(error: { code?: string; message?: string }) {
-  return error.code === "PGRST202" || error.code === "42883" || /complete_game_session.*not found|could not find the function/i.test(error.message ?? "");
-}
-
-export async function completeGameSession(sessionId: string, fallbackXp: number, game: GameCompletionMetadata): Promise<CompletedGameResult> {
-  if (!sessionId || !Number.isInteger(fallbackXp) || fallbackXp < 1 || fallbackXp > 500) throw new Error("Invalid game reward.");
+export async function completeGameSession(sessionId: string, game: GameCompletionMetadata): Promise<CompletedGameResult> {
+  if (!sessionId) throw new Error("Invalid game session.");
   const { data, error } = await createClient().rpc("complete_game_session", {
     p_session_id: sessionId,
     p_game_type: game.game_type,
@@ -47,10 +36,7 @@ export async function completeGameSession(sessionId: string, fallbackXp: number,
     p_accuracy: game.accuracy,
     p_reaction_times: game.reaction_times,
   });
-  if (error) {
-    if (isCompletionFunctionMissing(error)) return await awardGameReward(sessionId, fallbackXp);
-    throw error;
-  }
+  if (error) throw error;
   return data as CompletedGameResult;
 }
 

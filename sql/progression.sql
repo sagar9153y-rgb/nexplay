@@ -9,9 +9,13 @@ create table if not exists public.game_rewards (
 
 alter table public.game_rewards enable row level security;
 
+drop policy if exists "Users can read their own game rewards" on public.game_rewards;
 create policy "Users can read their own game rewards"
   on public.game_rewards for select
   using (auth.uid() = user_id);
+
+revoke all on public.game_rewards from public, anon, authenticated;
+grant select on public.game_rewards to authenticated;
 
 create or replace function public.award_game_reward(p_session_id uuid, p_xp integer)
 returns json
@@ -50,5 +54,5 @@ begin
 end;
 $$;
 
-revoke all on function public.award_game_reward(uuid, integer) from public;
+revoke all on function public.award_game_reward(uuid, integer) from public, anon, authenticated;
 grant execute on function public.award_game_reward(uuid, integer) to authenticated;

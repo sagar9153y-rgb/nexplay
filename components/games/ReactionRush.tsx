@@ -8,7 +8,6 @@ import RewardStatus from "@/components/games/RewardStatus";
 import { calculateAverage, calculateConsistency, createReactionBenchmarkTime } from "@/lib/ai/reaction-benchmark";
 import { useGameReward } from "@/lib/ai/useGameReward";
 import type { AIDifficulty } from "@/lib/ai/types";
-import { calculateGameReward } from "@/lib/progression";
 import type { GameCompletionMetadata } from "@/lib/progression-client";
 
 type GameMode = "solo" | "benchmark";
@@ -47,9 +46,6 @@ export default function ReactionRush() {
   const aiTimesRef = useRef<number[]>([]);
   const aiTimerRef = useRef<number | null>(null);
   const completed = mode === "solo" ? phase === "result" : phase === "complete";
-  const localXp = calculateGameReward(mode === "benchmark"
-    ? { game: "reaction-rush", reactionTimes: playerTimes }
-    : { game: "reaction-rush", reactionTime: lastTime ?? 500 });
   const playerAverage = calculateAverage(playerTimes);
   const aiAverage = calculateAverage(aiTimes);
   const playerBest = playerTimes.length > 0 ? Math.min(...playerTimes) : 0;
@@ -67,7 +63,7 @@ export default function ReactionRush() {
     accuracy: null,
     reaction_times: playerTimes,
   };
-  const { result: reward, loading: rewardLoading, error: rewardErrorMessage } = useGameReward(sessionId, completed, localXp, completionMetadata);
+  const { result: reward, loading: rewardLoading, error: rewardErrorMessage, retry: retryReward } = useGameReward(sessionId, completed, completionMetadata);
   const resultTitle = mode === "solo" ? "Test complete"
     : playerAverage < aiAverage ? "You beat the benchmark!"
       : playerAverage > aiAverage ? "AI benchmark wins"
@@ -219,10 +215,10 @@ export default function ReactionRush() {
         <div className="rounded-lg bg-white/[.04] p-3"><div className="text-lg font-black text-white">{playerConsistency || "—"}</div><div className="mt-1 text-[10px] uppercase tracking-wider text-[#85818e]">Player variance</div></div>
         <div className="rounded-lg bg-white/[.04] p-3"><div className="text-lg font-black text-white">{mode === "benchmark" ? aiConsistency || "—" : "—"}</div><div className="mt-1 text-[10px] uppercase tracking-wider text-[#85818e]">AI variance</div></div>
       </div><p className="mt-4 text-[10px] leading-5 text-[#85818e]">Lower reaction time is better. Variance compares consistency across rounds.</p></div>
-      <RewardStatus result={reward} loading={rewardLoading} error={rewardErrorMessage} />
+      <RewardStatus result={reward} loading={rewardLoading} error={rewardErrorMessage} onRetry={retryReward} />
       <div className="glass rounded-2xl p-5"><div className="mb-3 flex items-center gap-2 text-xs font-bold text-white"><Target size={15} className="text-[#ff5368]" /> How to play</div><p className="text-xs leading-6 text-[#85818e]">Wait for green, then tap or press Enter/Space. The AI benchmark is sampled in a realistic range for its selected difficulty.</p></div>
     </aside>
 
-    {completed && <div role="dialog" aria-modal="true" aria-label="Reaction Rush result" className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"><motion.div initial={{ opacity: 0, scale: .92 }} animate={{ opacity: 1, scale: 1 }} className="glass w-full max-w-[390px] rounded-2xl p-7 text-center"><Trophy className="mx-auto mb-4 text-[#ffb54c]" size={30} /><p className="eyebrow mb-2">{mode === "benchmark" ? "5 round benchmark" : "Solo test"}</p><h2 className="text-2xl font-black text-white">{resultTitle}</h2>{mode === "benchmark" && <div className="mt-5 grid grid-cols-2 gap-2 text-sm"><p className="rounded-lg bg-[#ff4058]/10 p-3 text-[#ff9ba8]">Player avg {playerAverage} ms</p><p className="rounded-lg bg-[#ae69df]/10 p-3 text-[#d6b3f3]">AI avg {aiAverage} ms</p><p className="rounded-lg bg-[#ff4058]/10 p-3 text-[#ff9ba8]">Player best {playerBest} ms</p><p className="rounded-lg bg-[#ae69df]/10 p-3 text-[#d6b3f3]">AI best {aiBest} ms</p></div>}<RewardStatus result={reward} loading={rewardLoading} error={rewardErrorMessage} /><button type="button" onClick={() => startGame()} className="accent-button mt-7 w-full">Play Again</button><button type="button" onClick={() => { setPhase("ready"); setLastTime(null); }} className="ghost-button mt-3 w-full">Change Mode</button><a href="/games" className="mt-4 inline-flex items-center gap-1 text-xs text-[#85818e] hover:text-white"><ArrowLeft size={13} /> Back to Games</a></motion.div></div>}
+    {completed && <div role="dialog" aria-modal="true" aria-label="Reaction Rush result" className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"><motion.div initial={{ opacity: 0, scale: .92 }} animate={{ opacity: 1, scale: 1 }} className="glass w-full max-w-[390px] rounded-2xl p-7 text-center"><Trophy className="mx-auto mb-4 text-[#ffb54c]" size={30} /><p className="eyebrow mb-2">{mode === "benchmark" ? "5 round benchmark" : "Solo test"}</p><h2 className="text-2xl font-black text-white">{resultTitle}</h2>{mode === "benchmark" && <div className="mt-5 grid grid-cols-2 gap-2 text-sm"><p className="rounded-lg bg-[#ff4058]/10 p-3 text-[#ff9ba8]">Player avg {playerAverage} ms</p><p className="rounded-lg bg-[#ae69df]/10 p-3 text-[#d6b3f3]">AI avg {aiAverage} ms</p><p className="rounded-lg bg-[#ff4058]/10 p-3 text-[#ff9ba8]">Player best {playerBest} ms</p><p className="rounded-lg bg-[#ae69df]/10 p-3 text-[#d6b3f3]">AI best {aiBest} ms</p></div>}<RewardStatus result={reward} loading={rewardLoading} error={rewardErrorMessage} onRetry={retryReward} /><button type="button" onClick={() => startGame()} className="accent-button mt-7 w-full">Play Again</button><button type="button" onClick={() => { setPhase("ready"); setLastTime(null); }} className="ghost-button mt-3 w-full">Change Mode</button><a href="/games" className="mt-4 inline-flex items-center gap-1 text-xs text-[#85818e] hover:text-white"><ArrowLeft size={13} /> Back to Games</a></motion.div></div>}
   </section>;
 }

@@ -3,7 +3,6 @@
 import { ArrowLeft, Bot, RotateCcw, Sparkles, Trophy, Users, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { calculateGameReward } from "@/lib/progression";
 import RewardStatus from "@/components/games/RewardStatus";
 import AIDifficultySelector from "@/components/games/AIDifficultySelector";
 import { chooseTicTacToeMove, type TicTacToeCell, type TicTacToeDifficulty, type TicTacToeMark } from "@/lib/ticTacToeAI";
@@ -123,8 +122,7 @@ export default function TicTacToe() {
     : mode === "ai" ? winner === "X" ? "You Win!" : "AI Wins"
       : `Player ${winner} Wins!`;
   const outcome = winner === "draw" ? "draw" : winner === "X" ? "win" : "loss";
-  const rewardXp = winner ? calculateGameReward({ game: "tic-tac-toe", outcome }) : 10;
-  const { result: reward, loading: rewardLoading, error: rewardError } = useGameReward(sessionId, Boolean(winner), rewardXp, {
+  const { result: reward, loading: rewardLoading, error: rewardError, retry: retryReward } = useGameReward(sessionId, Boolean(winner), {
     game_type: "tic-tac-toe",
     game_mode: mode,
     ai_difficulty: mode === "ai" ? difficulty : null,
@@ -174,6 +172,6 @@ export default function TicTacToe() {
       <div className="glass rounded-2xl p-5"><div className="mb-3 flex items-center gap-2 text-xs font-bold text-white"><Sparkles size={15} className="text-[#ffb54c]" /> How to play</div><p className="text-xs leading-6 text-[#85818e]">Take turns placing your mark. Get three in a row horizontally, vertically, or diagonally to win.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-[#85818e]"><span className="font-black text-[#ff5368]">X</span> You <span className="mx-1 text-white/20">vs</span> <span className="font-black text-[#ae69df]">O</span> {mode === "ai" ? "AI" : "Player O"}</div></div>
     </aside>
 
-    {winner && <div role="dialog" aria-modal="true" aria-label="Game result" className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"><motion.div initial={{ opacity: 0, scale: .9 }} animate={{ opacity: 1, scale: 1 }} className="glass w-full max-w-[340px] rounded-2xl p-7 text-center"><div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#ff4058]/15 text-[#ff5368]">{winner === "draw" ? <X size={25} /> : <Trophy size={25} />}</div><p className="eyebrow mb-3">Round complete</p><h2 className="text-3xl font-black tracking-tight text-white">{resultTitle}</h2><RewardStatus result={reward} loading={rewardLoading} error={rewardError} /><button type="button" onClick={resetBoard} className="accent-button mt-7 w-full">Play Again</button><a href="/games" className="mt-4 inline-flex items-center gap-1 text-xs text-[#85818e] hover:text-white"><ArrowLeft size={13} /> Back to Games</a></motion.div></div>}
+    {winner && <div role="dialog" aria-modal="true" aria-label="Game result" className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"><motion.div initial={{ opacity: 0, scale: .9 }} animate={{ opacity: 1, scale: 1 }} className="glass w-full max-w-[340px] rounded-2xl p-7 text-center"><div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#ff4058]/15 text-[#ff5368]">{winner === "draw" ? <X size={25} /> : <Trophy size={25} />}</div><p className="eyebrow mb-3">Round complete</p><h2 className="text-3xl font-black tracking-tight text-white">{resultTitle}</h2><RewardStatus result={reward} loading={rewardLoading} error={rewardError} onRetry={retryReward} /><button type="button" onClick={resetBoard} className="accent-button mt-7 w-full">Play Again</button><a href="/games" className="mt-4 inline-flex items-center gap-1 text-xs text-[#85818e] hover:text-white"><ArrowLeft size={13} /> Back to Games</a></motion.div></div>}
   </section>;
 }

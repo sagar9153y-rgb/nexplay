@@ -1,5 +1,35 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Supabase setup
+
+Set these public client variables in `.env.local` for local development and in
+the Vercel project settings for each deployed environment:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+```
+
+Use the Supabase project's publishable key (or its legacy anon key value in
+this variable). Never put a service-role key in a `NEXT_PUBLIC_` variable.
+
+In the Supabase Dashboard, open **SQL Editor** and run the complete SQL files
+from this repository in order:
+
+1. `sql/schema.sql` — profiles, signup trigger, profile row security.
+2. `sql/progression.sql` — idempotent per-user game rewards.
+3. `sql/progression-platform.sql` — game history, completion RPC, profile
+   progression, achievements, streaks, and leaderboard.
+
+The completion RPC depends on both preceding scripts. Re-run all three in
+order if setting up a new project; the schema and reward policies are safe to
+recreate.
+
+Under **Authentication → URL Configuration**, set the production Site URL and
+add the deployed `/auth/callback` URL to the allowed Redirect URLs. Add local
+and preview callback URLs there too if those environments use email
+confirmation.
+
 ## Getting Started
 
 First, run the development server:
