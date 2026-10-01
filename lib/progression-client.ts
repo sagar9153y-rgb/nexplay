@@ -25,19 +25,25 @@ export type CompletedGameResult = ProgressionResult & {
 
 export async function completeGameSession(sessionId: string, game: GameCompletionMetadata): Promise<CompletedGameResult> {
   if (!sessionId) throw new Error("Invalid game session.");
-  const { data, error } = await createClient().rpc("complete_game_session", {
-    p_session_id: sessionId,
-    p_game_type: game.game_type,
-    p_game_mode: game.game_mode,
-    p_ai_difficulty: game.ai_difficulty,
-    p_result: game.result,
-    p_score: game.score,
-    p_moves: game.moves,
-    p_accuracy: game.accuracy,
-    p_reaction_times: game.reaction_times,
+  const response = await fetch("/api/game-completion", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, game }),
   });
-  if (error) throw error;
-  return data as CompletedGameResult;
+  const payload: unknown = await response.json();
+  if (!response.ok) {
+    const errorPayload = typeof payload === "object" && payload !== null
+      ? payload as { error?: unknown; code?: unknown }
+      : {};
+    const message = typeof errorPayload.error === "string"
+      ? errorPayload.error
+      : "Unable to sync game rewards.";
+    const code = typeof errorPayload.code === "string" ? errorPayload.code : undefined;
+    const error = new Error(message) as Error & { code?: string };
+    error.code = code;
+    throw error;
+  }
+  return payload as CompletedGameResult;
 }
 
 export async function syncDailyMissions(
